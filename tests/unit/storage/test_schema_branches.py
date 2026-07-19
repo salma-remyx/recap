@@ -1,5 +1,6 @@
 import pytest
 
+from recap.storage.merge_conflicts import MergeConflict
 from recap.storage.registry import RegistryStorage
 from recap.storage.schema_branches import SchemaBranches
 from recap.types import IntType, StringType, StructType
@@ -106,3 +107,39 @@ def test_merge_requires_at_least_one_commit(storage):
 
     with pytest.raises(ValueError):
         branches.merge(name, "feature")
+
+
+def test_merge_rejects_overlapping_concurrent_change(storage):
+    name = "orders"
+    # v1 is the common ancestor with a single named field.
+    storage.put(name, StructType(fields=[IntType(bits=32, name="id")]))
+    branches = SchemaBranches(storage)
+    branches.branch(name, "feature")  # forks off v1
+    # The branch widens "id".
+    branches.commit(name, "feature", StructType(fields=[IntType(bits=64, name="id")]))
+    # Meanwhile another writer publishes an incompatible edit to "id" as v2.
+    storage.put(name, StructType(fields=[StringType(bytes_=8, name="id")]))
+
+    with pytest.raises(MergeConflict):
+        branches.merge(name, "feature")
+    # The concurrent v2 is left intact -- the merge did not clobber it.
+    assert storage.versions(name) == [1, 2]
+
+
+def test_merge_allows_non_overlapping_concurrent_change(storage):
+    name = "orders"
+    storage.put(name, StructType(fields=[IntType(bits=32, name="id")]))
+    branches = SchemaBranches(storage)
+    branches.branch(name, "feature")  # forks off v1
+    # The branch touches only "id".
+    branches.commit(name, "feature", StructType(fields=[IntType(bits=64, name="id")]))
+    # A concurrent writer adds a different field, leaving "id" untouched.
+    storage.put(
+        name,
+        StructType(fields=[IntType(bits=32, name="id"), StringType(name="note")]),
+    )
+
+    new_version = branches.merge(name, "feature")
+
+    assert new_version == 3
+    assert storage.versions(name) == [1, 2, 3]

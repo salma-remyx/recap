@@ -25,6 +25,7 @@ import json
 from pathlib import Path
 from urllib.parse import quote_plus, unquote_plus
 
+from recap.storage.merge_conflicts import MergeConflict, detect_merge_conflict
 from recap.storage.registry import RegistryStorage
 from recap.types import RecapType, from_dict, to_dict
 
@@ -169,6 +170,12 @@ class SchemaBranches:
         The publish is a single ``put`` so the branch's changes become visible
         atomically. Requires at least one commit (an empty branch has nothing
         to publish) and a branch that has not already been merged.
+
+        If the main registry advanced past the branch's base version while the
+        branch was open, the tip is reconciled against those concurrent changes
+        with a three-way merge (base version vs. current latest vs. branch tip).
+        Overlapping, incompatible edits raise :class:`MergeConflict` instead of
+        silently overwriting the concurrent work.
         """
         meta = self._read_meta(name, branch_name)
         if meta["merged"]:
@@ -176,6 +183,15 @@ class SchemaBranches:
         if not self._commit_indexes(name, branch_name):
             raise ValueError(f"Branch {branch_name!r} has no commits; nothing to merge")
         type_, _ = self.tip(name, branch_name)
+
+        base_version = meta["base_version"]
+        current = self.storage.get(name)
+        if current is not None and current[1] != base_version:
+            base_result = self.storage.get(name, base_version)
+            base_type = base_result[0] if base_result else None
+            if conflicts := detect_merge_conflict(base_type, current[0], type_):
+                raise MergeConflict(conflicts)
+
         new_version = self.storage.put(name, type_)
         meta["merged"] = True
         with self.fs.open(self._meta_path(name, branch_name), "w") as f:

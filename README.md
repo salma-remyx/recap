@@ -229,6 +229,12 @@ Merge the branch to publish its tip as a new version:
 curl -X POST http://localhost:8000/registry/some_schema/branches/feature/merge
 ```
 
+If the schema advanced past the branch's base version while the branch was open,
+the merge reconciles the tip against those concurrent changes with a three-way
+comparison (base version vs. current latest vs. branch tip). Overlapping,
+incompatible edits are rejected with `409 Conflict` instead of silently
+overwriting the concurrent work, so a merge either applies cleanly or not at all.
+
 ### API
 
 Recap has `recap.converters` and `recap.clients` packages.

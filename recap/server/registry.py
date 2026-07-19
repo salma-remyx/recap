@@ -3,6 +3,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from recap.settings import RecapSettings
+from recap.storage.merge_conflicts import MergeConflict
 from recap.storage.registry import RegistryStorage
 from recap.storage.schema_branches import SchemaBranches
 from recap.types import RecapType, from_dict, to_dict
@@ -120,6 +121,8 @@ def _branch_op(op):
     """Run a SchemaBranches operation, mapping its errors to HTTP statuses."""
     try:
         return op()
+    except MergeConflict as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except FileExistsError as e:

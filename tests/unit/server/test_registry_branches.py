@@ -71,3 +71,23 @@ def test_commit_to_missing_branch_is_not_found():
         headers=RECAP_JSON,
     )
     assert response.status_code == 404
+
+
+def test_merge_conflict_returns_409():
+    name = "orders"
+    ancestor = StructType(fields=[IntType(bits=32, name="id")])
+    assert _post(name, ancestor).text == "1"
+
+    # Branch off v1 and evolve "id".
+    assert client.post(f"/registry/{name}/branches/feature").text == "1"
+    client.post(
+        f"/registry/{name}/branches/feature/commits",
+        json=to_dict(StructType(fields=[IntType(bits=64, name="id")])),
+        headers=RECAP_JSON,
+    )
+
+    # A concurrent publish rewrites "id" incompatibly as v2.
+    assert _post(name, StructType(fields=[StringType(name="id")])).text == "2"
+
+    merge_resp = client.post(f"/registry/{name}/branches/feature/merge")
+    assert merge_resp.status_code == 409
