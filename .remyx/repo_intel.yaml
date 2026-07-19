@@ -1,0 +1,18 @@
+schema_version: 1
+fork: salma-remyx/recap
+observed_landing_zones:
+- path: recap/storage/
+  shape_tags:
+  - registry-add
+  confirmed_by:
+  - arxiv: 2607.08319v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: The `registry.router` FastAPI APIRouter in recap/server/registry.py,
+      already mounted by the pre-existing recap/server/app.py via `app.include_router(registry.router)`;
+      the new POST endpoints under /re
+    branch: gitlake-git-for-data-for-the-agentic-lakehouse
+    timestamp: '2026-07-19T19:38:21Z'
+  last_observed: '2026-07-19T19:38:21Z'
+rejected_shapes: []
+coordination_signals: []
+last_updated: '2026-07-19T19:38:21Z'
