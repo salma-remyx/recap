@@ -201,6 +201,34 @@ The registry uses [fsspec](https://filesystem-spec.readthedocs.io/en/latest/) to
 
 An OpenAPI schema is available at [http://localhost:8000/docs](http://localhost:8000/docs).
 
+#### Schema branches (adapted from GitLake)
+
+You can branch a schema, commit edits on an isolated branch, then merge to
+publish a new version. This Git-for-data workflow (adapted from GitLake, a
+"Git-for-data" design for governed schema changes) lets agents work on
+isolated branches while humans review and publish changes atomically.
+
+Branch off the latest published version (returns the base version):
+
+```bash
+curl -X POST http://localhost:8000/registry/some_schema/branches/feature
+```
+
+Commit a snapshot to the branch (not yet visible to the main registry):
+
+```bash
+curl -X POST \
+    -H "Content-Type: application/x-recap+json" \
+    -d '{"type":"struct","fields":[{"type":"int32","name":"test_int","optional":true}]}' \
+    http://localhost:8000/registry/some_schema/branches/feature/commits
+```
+
+Merge the branch to publish its tip as a new version:
+
+```bash
+curl -X POST http://localhost:8000/registry/some_schema/branches/feature/merge
+```
+
 ### API
 
 Recap has `recap.converters` and `recap.clients` packages.

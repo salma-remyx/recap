@@ -13,11 +13,15 @@ class RegistryStorage:
         self.fs.mkdirs(self.root_path, exist_ok=True)
 
     def ls(self) -> list[str]:
+        # Dot-prefixed entries (e.g. the .branches namespace used by
+        # SchemaBranches) are registry plumbing, not published schemas.
         return sorted(
-            [
+            name
+            for name in (
                 unquote_plus(file_path[len(self.root_path) + 1 :])
                 for file_path in self.fs.ls(self.root_path)
-            ]
+            )
+            if not name.startswith(".")
         )
 
     def get(

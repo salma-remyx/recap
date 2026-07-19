@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from recap.settings import RecapSettings
 from recap.storage.registry import RegistryStorage
+from recap.storage.schema_branches import SchemaBranches
 from recap.types import RecapType, from_dict, to_dict
 
 router = APIRouter(prefix="/registry")
@@ -113,3 +114,47 @@ async def _request_to_type(request: Request) -> RecapType:
             status_code=400,
             detail=f"Failed to parse type: {e}",
         )
+
+
+def _branch_op(op):
+    """Run a SchemaBranches operation, mapping its errors to HTTP statuses."""
+    try:
+        return op()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except FileExistsError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{name:str}/branches/{branch_name:str}")
+async def create_branch(
+    name: str,
+    branch_name: str,
+    base_version: int | None = None,
+    storage: RegistryStorage = Depends(get_storage),
+) -> int:
+    return _branch_op(
+        lambda: SchemaBranches(storage).branch(name, branch_name, base_version)
+    )
+
+
+@router.post("/{name:str}/branches/{branch_name:str}/commits")
+async def commit_to_branch(
+    name: str,
+    branch_name: str,
+    request: Request,
+    storage: RegistryStorage = Depends(get_storage),
+) -> int:
+    type_ = await _request_to_type(request)
+    return _branch_op(lambda: SchemaBranches(storage).commit(name, branch_name, type_))
+
+
+@router.post("/{name:str}/branches/{branch_name:str}/merge")
+async def merge_branch(
+    name: str,
+    branch_name: str,
+    storage: RegistryStorage = Depends(get_storage),
+) -> int:
+    return _branch_op(lambda: SchemaBranches(storage).merge(name, branch_name))
