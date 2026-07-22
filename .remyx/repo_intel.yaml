@@ -13,6 +13,12 @@ observed_landing_zones:
     branch: gitlake-git-for-data-for-the-agentic-lakehouse
     timestamp: '2026-07-19T19:38:21Z'
   last_observed: '2026-07-19T19:38:21Z'
-rejected_shapes: []
+rejected_shapes:
+- shape_tag: null
+  reason_code: null
+  reason_summary: ''
+  observed:
+  - arxiv: 2607.12480v1
+    timestamp: '2026-07-22T03:52:13Z'
 coordination_signals: []
-last_updated: '2026-07-19T19:38:21Z'
+last_updated: '2026-07-22T03:52:13Z'
